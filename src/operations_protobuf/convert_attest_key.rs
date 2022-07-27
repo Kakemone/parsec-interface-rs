@@ -31,6 +31,21 @@ impl TryFrom<Operation> for OperationProto {
                     )),
                 }),
             }),
+            Operation::CertifyAndQuote {
+                attested_key_name,
+                nonce,
+                attesting_key_name,
+            } => Ok(OperationProto {
+                attested_key_name,
+                attesting_key_name: attesting_key_name.unwrap_or_default(),
+                parameters: Some(AttestationMechanismParams {
+                    mechanism: Some(attestation_mechanism_params::Mechanism::CertifyAndQuote(
+                        attestation_mechanism_params::CertifyAndQuote {
+                            nonce: nonce.to_vec(),
+                        },
+                    )),
+                }),
+            }),
         }
     }
 }
@@ -58,6 +73,22 @@ impl TryFrom<OperationProto> for Operation {
                 credential_blob: credential_blob.into(),
                 secret: secret.into(),
             }),
+            Some(AttestationMechanismParams {
+                mechanism:
+                    Some(attestation_mechanism_params::Mechanism::CertifyAndQuote(
+                        attestation_mechanism_params::CertifyAndQuote {
+                            nonce,
+                        },
+                    )),
+            }) => Ok(Operation::CertifyAndQuote {
+                attested_key_name: proto_op.attested_key_name,
+                attesting_key_name: if proto_op.attesting_key_name.is_empty() {
+                    None
+                } else {
+                    Some(proto_op.attesting_key_name)
+                },
+                nonce: nonce.into(),
+            }),
             _ => {
                 error!("The encoding of the operation does not follow the expected pattern");
                 Err(ResponseStatus::InvalidEncoding)
@@ -76,6 +107,16 @@ impl TryFrom<Result> for ResultProto {
                     mechanism: Some(attestation_output::Mechanism::ActivateCredential(
                         attestation_output::ActivateCredential {
                             credential: credential.to_vec(),
+                        },
+                    )),
+                }),
+            }),
+            Result::CertifyAndQuote { key_attestation_certificate, platform_attestation_certificate } => Ok(ResultProto {
+                output: Some(AttestationOutput {
+                    mechanism: Some(attestation_output::Mechanism::CertifyAndQuote(
+                        attestation_output::CertifyAndQuote {
+                            key_attestation_certificate: key_attestation_certificate.to_vec(),
+                            platform_attestation_certificate: platform_attestation_certificate.to_vec(),
                         },
                     )),
                 }),
@@ -99,6 +140,18 @@ impl TryFrom<ResultProto> for Result {
                     }),
             } => Ok(Result::ActivateCredential {
                 credential: credential.into(),
+            }),
+            ResultProto {
+                output: 
+                    Some(AttestationOutput {
+                        mechanism:
+                            Some(attestation_output::Mechanism::CertifyAndQuote(
+                                attestation_output::CertifyAndQuote { key_attestation_certificate, platform_attestation_certificate},
+                            )),
+                    }),
+            } => Ok(Result::CertifyAndQuote {
+                key_attestation_certificate: key_attestation_certificate.into(),
+                platform_attestation_certificate: platform_attestation_certificate.into(),
             }),
             _ => {
                 error!("The encoding of the result does not follow the expected pattern");
@@ -129,6 +182,32 @@ mod test {
         let op_attesting_key_name = String::from("attesting key name");
         let op_credential_blob = vec![0xaa; 32];
         let op_secret = vec![0x11; 16];
+        let op_nonce = vec![0x88; 8];
+
+        let proto = OperationProto {
+            attested_key_name: op_attested_key_name.clone(),
+            attesting_key_name: op_attesting_key_name.clone(),
+            parameters: Some(AttestationMechanismParams {
+                mechanism: Some(attestation_mechanism_params::Mechanism::CertifyAndQuote(
+                    attestation_mechanism_params::CertifyAndQuote {
+                        nonce: op_nonce.clone(),
+                    },
+                )),
+            }),
+        };
+
+        let op: Operation = proto.try_into().expect("Failed conversion");
+        let Operation::CertifyAndQuote {
+            attested_key_name,
+            attesting_key_name,
+            nonce,
+        } = op;
+        assert_eq!(attested_key_name, op_attested_key_name);
+        assert_eq!(
+            attesting_key_name.unwrap_or_default(),
+            op_attesting_key_name
+        );
+        assert_eq!(nonce.to_vec(), op_nonce);
 
         let proto = OperationProto {
             attested_key_name: op_attested_key_name.clone(),
@@ -164,7 +243,26 @@ mod test {
         let op_attested_key_name = String::from("attested key name");
         let op_credential_blob = vec![0xaa; 32];
         let op_secret = vec![0x11; 16];
+        let op_nonce = vec![0x88; 8];
 
+        let proto = OperationProto {
+            attested_key_name: op_attested_key_name,
+            attesting_key_name: String::new(),
+            parameters: Some(AttestationMechanismParams {
+                mechanism: Some(attestation_mechanism_params::Mechanism::CertifyAndQuote(
+                    attestation_mechanism_params::CertifyAndQuote {
+                        nonce: op_nonce,
+                    },
+                )),
+            }),
+        };
+
+        let op: Operation = proto.try_into().expect("Failed conversion");
+        let Operation::CertifyAndQuote {
+            attesting_key_name, ..
+        } = op;
+        assert!(attesting_key_name.is_none());
+        
         let proto = OperationProto {
             attested_key_name: op_attested_key_name,
             attesting_key_name: String::new(),
@@ -191,6 +289,33 @@ mod test {
         let op_attesting_key_name = String::from("attesting key name");
         let op_credential_blob = vec![0xaa; 32];
         let op_secret = vec![0x11; 16];
+        let op_nonce = vec![0x88; 8];
+
+        let op = Operation::CertifyAndQuote {
+            attested_key_name: op_attested_key_name.clone(),
+            attesting_key_name: Some(op_attesting_key_name.clone()),
+            nonce: op_nonce.clone().into(),
+        };
+
+        let proto: OperationProto = op.try_into().expect("Failed conversion");
+        if let OperationProto {
+            attested_key_name,
+            attesting_key_name,
+            parameters:
+                Some(AttestationMechanismParams {
+                    mechanism:
+                        Some(attestation_mechanism_params::Mechanism::CertifyAndQuote(
+                            attestation_mechanism_params::CertifyAndQuote {
+                                nonce,
+                            },
+                        )),
+                }),
+        } = proto
+        {
+            assert_eq!(attested_key_name, op_attested_key_name);
+            assert_eq!(attesting_key_name, op_attesting_key_name);
+            assert_eq!(nonce, op_nonce);
+        }
 
         let op = Operation::ActivateCredential {
             attested_key_name: op_attested_key_name.clone(),
@@ -227,6 +352,16 @@ mod test {
         let op_attested_key_name = String::from("attested key name");
         let op_credential_blob = vec![0xaa; 32];
         let op_secret = vec![0x11; 16];
+        let op_nonce = vec![0x88; 8];
+
+        let op = Operation::CertifyAndQuote {
+            attested_key_name: op_attested_key_name,
+            attesting_key_name: None,
+            nonce: op_nonce.into(),
+        };
+
+        let proto: OperationProto = op.try_into().expect("Failed conversion");
+        assert_eq!(proto.attesting_key_name, String::new());
 
         let op = Operation::ActivateCredential {
             attested_key_name: op_attested_key_name,
@@ -245,6 +380,21 @@ mod test {
         let op_attesting_key_name = String::from("attesting key name");
         let op_credential_blob = vec![0xaa; 32];
         let op_secret = vec![0x11; 16];
+        let op_nonce = vec![0x88; 8];
+
+        let op = Operation::CertifyAndQuote {
+            attested_key_name: op_attested_key_name,
+            attesting_key_name: Some(op_attesting_key_name),
+            nonce: op_nonce.into(),
+        };
+
+        let body = CONVERTER
+            .operation_to_body(NativeOperation::AttestKey(op))
+            .expect("Failed to convert to body");
+
+        let _ = CONVERTER
+            .body_to_operation(body, Opcode::AttestKey)
+            .expect("Failed to convert to operation");
 
         let op = Operation::ActivateCredential {
             attested_key_name: op_attested_key_name,
@@ -265,6 +415,26 @@ mod test {
     #[test]
     fn attest_key_resp_from_proto() {
         let resp_credential = vec![0xbb; 32];
+        let resp_key_attestation_certificate = vec![0x99; 32];
+        let resp_platform_attestation_certificate = vec![0xcc; 32];
+
+        let proto = ResultProto {
+            output: Some(AttestationOutput {
+                mechanism: Some(attestation_output::Mechanism::CertifyAndQuote(
+                    attestation_output::CertifyAndQuote {
+                        key_attestation_certificate: resp_key_attestation_certificate.clone(),
+                        platform_attestation_certificate: resp_platform_attestation_certificate.clone(),
+                    },
+                )),
+            }),
+        };
+
+        let resp: Result = proto.try_into().expect("Failed conversion");
+
+        let Result::CertifyAndQuote { key_attestation_certificate, platform_attestation_certificate } = resp;
+
+        assert_eq!(key_attestation_certificate.to_vec(), resp_key_attestation_certificate);
+        assert_eq!(platform_attestation_certificate.to_vec(), resp_platform_attestation_certificate);
 
         let proto = ResultProto {
             output: Some(AttestationOutput {
@@ -286,6 +456,29 @@ mod test {
     #[test]
     fn attest_key_resp_to_proto() {
         let resp_credential = vec![0xbb; 32];
+        let resp_key_attestation_certificate = vec![0x99; 32];
+        let resp_platform_attestation_certificate = vec![0xcc; 32];
+
+        let resp = Result::CertifyAndQuote {
+            key_attestation_certificate: resp_key_attestation_certificate.clone().into(),
+            platform_attestation_certificate: resp_platform_attestation_certificate.clone().into(),
+        };
+
+        let proto: ResultProto = resp.try_into().expect("Failed conversion");
+
+        if let ResultProto {
+            output:
+                Some(AttestationOutput {
+                    mechanism:
+                        Some(attestation_output::Mechanism::CertifyAndQuote(
+                            attestation_output::CertifyAndQuote { key_attestation_certificate, platform_attestation_certificate },
+                        )),
+                }),
+        } = proto
+        {
+            assert_eq!(key_attestation_certificate.to_vec(), resp_key_attestation_certificate);
+            assert_eq!(platform_attestation_certificate.to_vec(), resp_platform_attestation_certificate);
+        }
 
         let resp = Result::ActivateCredential {
             credential: resp_credential.clone().into(),
@@ -310,6 +503,21 @@ mod test {
     #[test]
     fn attest_key_resp_e2e() {
         let resp_credential = vec![0xbb; 32];
+        let resp_key_attestation_certificate = vec![0x99; 32];
+        let resp_platform_attestation_certificate = vec![0xcc; 32];
+
+        let resp = Result::CertifyAndQuote {
+            key_attestation_certificate: resp_key_attestation_certificate.into(),
+            platform_attestation_certificate: resp_platform_attestation_certificate.into(),
+        };
+
+        let body = CONVERTER
+            .result_to_body(NativeResult::AttestKey(resp))
+            .expect("Failed to convert to body");
+
+        let _ = CONVERTER
+            .body_to_result(body, Opcode::AttestKey)
+            .expect("Failed to convert to operation");
 
         let resp = Result::ActivateCredential {
             credential: resp_credential.into(),
