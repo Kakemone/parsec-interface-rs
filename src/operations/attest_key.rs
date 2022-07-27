@@ -31,7 +31,7 @@ pub enum Operation {
         attested_key_name: String,
         /// The nonce to be used in the TLS handshake
         #[derivative(Debug = "ignore")]
-        nonce: Zeroizing<Vec<u8>>,
+        nonce: Vec<u8>,
         /// Name of key to be used for attesting
         attesting_key_name: Option<String>,
     },
