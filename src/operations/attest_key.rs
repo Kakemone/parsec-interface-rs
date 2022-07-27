@@ -25,6 +25,16 @@ pub enum Operation {
         /// Name of key to be used for attesting
         attesting_key_name: Option<String>,
     },
+    ///Key and platform attestation
+    CertifyAndQuote {
+        /// Name of key to be attested
+        attested_key_name: String,
+        /// The nonce to be used in the TLS handshake
+        #[derivative(Debug = "ignore")]
+        nonce: Zeroizing<Vec<u8>>,
+        /// Name of key to be used for attesting
+        attesting_key_name: Option<String>,
+    },
 }
 
 /// Native result of key attestation
@@ -37,5 +47,14 @@ pub enum Result {
         /// Decrypted credential
         #[derivative(Debug = "ignore")]
         credential: Zeroizing<Vec<u8>>,
+    },
+    ///Result of key and platform attestation
+    CertifyAndQuote {
+        ///Key attestation certificate
+        #[derivative(Debug = "ignore")]
+        key_attestation_certificate: Zeroizing<Vec<u8>>,
+        ///Platform attestation certificate
+        #[derivative(Debug = "ignore")]
+        platform_attestation_certificate: Zeroizing<Vec<u8>>,
     },
 }
