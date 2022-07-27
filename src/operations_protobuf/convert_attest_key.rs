@@ -177,11 +177,9 @@ mod test {
     static CONVERTER: ProtobufConverter = ProtobufConverter {};
 
     #[test]
-    fn attest_key_op_from_proto() {
+    fn attest_key_op_from_proto_certify_and_quote() {
         let op_attested_key_name = String::from("attested key name");
         let op_attesting_key_name = String::from("attesting key name");
-        let op_credential_blob = vec![0xaa; 32];
-        let op_secret = vec![0x11; 16];
         let op_nonce = vec![0x88; 8];
 
         let proto = OperationProto {
@@ -197,17 +195,28 @@ mod test {
         };
 
         let op: Operation = proto.try_into().expect("Failed conversion");
-        let Operation::CertifyAndQuote {
+        if let Operation::CertifyAndQuote {
             attested_key_name,
             attesting_key_name,
             nonce,
-        } = op;
-        assert_eq!(attested_key_name, op_attested_key_name);
-        assert_eq!(
-            attesting_key_name.unwrap_or_default(),
-            op_attesting_key_name
-        );
-        assert_eq!(nonce.to_vec(), op_nonce);
+        } = op {
+            assert_eq!(attested_key_name, op_attested_key_name);
+            assert_eq!(
+                attesting_key_name.unwrap_or_default(),
+                op_attesting_key_name
+            );
+            assert_eq!(nonce.to_vec(), op_nonce);
+        } else {
+            panic!("`if let` branch not taken")
+        }
+    }
+
+    #[test]
+    fn attest_key_op_from_proto_activate_credential() {
+        let op_attested_key_name = String::from("attested key name");
+        let op_attesting_key_name = String::from("attesting key name");
+        let op_credential_blob = vec![0xaa; 32];
+        let op_secret = vec![0x11; 16];
 
         let proto = OperationProto {
             attested_key_name: op_attested_key_name.clone(),
@@ -223,26 +232,27 @@ mod test {
         };
 
         let op: Operation = proto.try_into().expect("Failed conversion");
-        let Operation::ActivateCredential {
+        if let Operation::ActivateCredential {
             attested_key_name,
             attesting_key_name,
             credential_blob,
             secret,
-        } = op;
-        assert_eq!(attested_key_name, op_attested_key_name);
-        assert_eq!(
-            attesting_key_name.unwrap_or_default(),
-            op_attesting_key_name
-        );
-        assert_eq!(credential_blob.to_vec(), op_credential_blob);
-        assert_eq!(secret.to_vec(), op_secret);
+        } = op {
+            assert_eq!(attested_key_name, op_attested_key_name);
+            assert_eq!(
+                attesting_key_name.unwrap_or_default(),
+                op_attesting_key_name
+            );
+            assert_eq!(credential_blob.to_vec(), op_credential_blob);
+            assert_eq!(secret.to_vec(), op_secret);
+        } else {
+            panic!("`if let` branch not taken")
+        }
     }
 
     #[test]
-    fn attest_key_proto_no_attesting() {
+    fn attest_key_proto_no_attesting_certify_and_quote() {
         let op_attested_key_name = String::from("attested key name");
-        let op_credential_blob = vec![0xaa; 32];
-        let op_secret = vec![0x11; 16];
         let op_nonce = vec![0x88; 8];
 
         let proto = OperationProto {
@@ -258,10 +268,20 @@ mod test {
         };
 
         let op: Operation = proto.try_into().expect("Failed conversion");
-        let Operation::CertifyAndQuote {
+        if let Operation::CertifyAndQuote {
             attesting_key_name, ..
-        } = op;
-        assert!(attesting_key_name.is_none());
+        } = op {
+            assert!(attesting_key_name.is_none());
+        } else {
+            panic!("`if let` branch not taken")
+        }
+    }
+
+    #[test]
+    fn attest_key_proto_no_attesting_activate_credential() {
+        let op_attested_key_name = String::from("attested key name");
+        let op_credential_blob = vec![0xaa; 32];
+        let op_secret = vec![0x11; 16];
         
         let proto = OperationProto {
             attested_key_name: op_attested_key_name,
@@ -277,18 +297,19 @@ mod test {
         };
 
         let op: Operation = proto.try_into().expect("Failed conversion");
-        let Operation::ActivateCredential {
+        if let Operation::ActivateCredential {
             attesting_key_name, ..
-        } = op;
-        assert!(attesting_key_name.is_none());
+        } = op {
+            assert!(attesting_key_name.is_none());
+        } else {
+            panic!("`if let` branch not taken")
+        }
     }
 
     #[test]
-    fn attest_key_proto_from_op() {
+    fn attest_key_proto_from_op_certify_and_quote() {
         let op_attested_key_name = String::from("attested key name");
         let op_attesting_key_name = String::from("attesting key name");
-        let op_credential_blob = vec![0xaa; 32];
-        let op_secret = vec![0x11; 16];
         let op_nonce = vec![0x88; 8];
 
         let op = Operation::CertifyAndQuote {
@@ -316,6 +337,14 @@ mod test {
             assert_eq!(attesting_key_name, op_attesting_key_name);
             assert_eq!(nonce, op_nonce);
         }
+    }
+
+    #[test]
+    fn attest_key_proto_from_op_activate_credential() {
+        let op_attested_key_name = String::from("attested key name");
+        let op_attesting_key_name = String::from("attesting key name");
+        let op_credential_blob = vec![0xaa; 32];
+        let op_secret = vec![0x11; 16];
 
         let op = Operation::ActivateCredential {
             attested_key_name: op_attested_key_name.clone(),
@@ -348,10 +377,8 @@ mod test {
     }
 
     #[test]
-    fn attest_key_op_no_attesting() {
+    fn attest_key_op_no_attesting_certify_and_quote() {
         let op_attested_key_name = String::from("attested key name");
-        let op_credential_blob = vec![0xaa; 32];
-        let op_secret = vec![0x11; 16];
         let op_nonce = vec![0x88; 8];
 
         let op = Operation::CertifyAndQuote {
@@ -362,6 +389,13 @@ mod test {
 
         let proto: OperationProto = op.try_into().expect("Failed conversion");
         assert_eq!(proto.attesting_key_name, String::new());
+    }
+
+    #[test]
+    fn attest_key_op_no_attesting_activate_credential() {
+        let op_attested_key_name = String::from("attested key name");
+        let op_credential_blob = vec![0xaa; 32];
+        let op_secret = vec![0x11; 16];
 
         let op = Operation::ActivateCredential {
             attested_key_name: op_attested_key_name,
@@ -375,11 +409,9 @@ mod test {
     }
 
     #[test]
-    fn attest_key_op_e2e() {
+    fn attest_key_op_e2e_certify_and_quote() {
         let op_attested_key_name = String::from("attested key name");
         let op_attesting_key_name = String::from("attesting key name");
-        let op_credential_blob = vec![0xaa; 32];
-        let op_secret = vec![0x11; 16];
         let op_nonce = vec![0x88; 8];
 
         let op = Operation::CertifyAndQuote {
@@ -395,6 +427,14 @@ mod test {
         let _ = CONVERTER
             .body_to_operation(body, Opcode::AttestKey)
             .expect("Failed to convert to operation");
+        }
+
+        #[test]
+        fn attest_key_op_e2e_activate_credential() {
+            let op_attested_key_name = String::from("attested key name");
+            let op_attesting_key_name = String::from("attesting key name");
+            let op_credential_blob = vec![0xaa; 32];
+            let op_secret = vec![0x11; 16];
 
         let op = Operation::ActivateCredential {
             attested_key_name: op_attested_key_name,
@@ -413,8 +453,7 @@ mod test {
     }
 
     #[test]
-    fn attest_key_resp_from_proto() {
-        let resp_credential = vec![0xbb; 32];
+    fn attest_key_resp_from_proto_certify_and_quote() {
         let resp_key_attestation_certificate = vec![0x99; 32];
         let resp_platform_attestation_certificate = vec![0xcc; 32];
 
@@ -431,10 +470,17 @@ mod test {
 
         let resp: Result = proto.try_into().expect("Failed conversion");
 
-        let Result::CertifyAndQuote { key_attestation_certificate, platform_attestation_certificate } = resp;
+        if let Result::CertifyAndQuote { key_attestation_certificate, platform_attestation_certificate } = resp {
+            assert_eq!(key_attestation_certificate.to_vec(), resp_key_attestation_certificate);
+            assert_eq!(platform_attestation_certificate.to_vec(), resp_platform_attestation_certificate);
+        } else {
+            panic!("`if let` branch not taken")
+        }
+    }
 
-        assert_eq!(key_attestation_certificate.to_vec(), resp_key_attestation_certificate);
-        assert_eq!(platform_attestation_certificate.to_vec(), resp_platform_attestation_certificate);
+    #[test]
+    fn attest_key_resp_from_proto_activate_credential() {
+        let resp_credential = vec![0xbb; 32];
 
         let proto = ResultProto {
             output: Some(AttestationOutput {
@@ -448,14 +494,15 @@ mod test {
 
         let resp: Result = proto.try_into().expect("Failed conversion");
 
-        let Result::ActivateCredential { credential } = resp;
-
-        assert_eq!(credential.to_vec(), resp_credential);
+        if let Result::ActivateCredential { credential } = resp {
+            assert_eq!(credential.to_vec(), resp_credential);
+        } else {
+            panic!("`if let` branch not taken")
+        }
     }
 
     #[test]
-    fn attest_key_resp_to_proto() {
-        let resp_credential = vec![0xbb; 32];
+    fn attest_key_resp_to_proto_certify_and_quote() {
         let resp_key_attestation_certificate = vec![0x99; 32];
         let resp_platform_attestation_certificate = vec![0xcc; 32];
 
@@ -478,7 +525,14 @@ mod test {
         {
             assert_eq!(key_attestation_certificate.to_vec(), resp_key_attestation_certificate);
             assert_eq!(platform_attestation_certificate.to_vec(), resp_platform_attestation_certificate);
+        } else {
+            panic!("`if let` branch not taken")
         }
+    }
+
+    #[test]
+    fn attest_key_resp_to_proto_activate_credential() {
+        let resp_credential = vec![0xbb; 32];
 
         let resp = Result::ActivateCredential {
             credential: resp_credential.clone().into(),
@@ -497,12 +551,13 @@ mod test {
         } = proto
         {
             assert_eq!(credential.to_vec(), resp_credential);
+        } else {
+            panic!("`if let` branch not taken")
         }
     }
 
     #[test]
-    fn attest_key_resp_e2e() {
-        let resp_credential = vec![0xbb; 32];
+    fn attest_key_resp_e2e_certify_and_quote() {
         let resp_key_attestation_certificate = vec![0x99; 32];
         let resp_platform_attestation_certificate = vec![0xcc; 32];
 
@@ -518,6 +573,11 @@ mod test {
         let _ = CONVERTER
             .body_to_result(body, Opcode::AttestKey)
             .expect("Failed to convert to operation");
+    }
+
+    #[test]
+    fn attest_key_resp_e2e_activate_credential() {
+        let resp_credential = vec![0xbb; 32];
 
         let resp = Result::ActivateCredential {
             credential: resp_credential.into(),
