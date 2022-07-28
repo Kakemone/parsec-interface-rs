@@ -366,17 +366,26 @@ impl ClearProtoMessage for attest_key::Operation {
 
 impl ClearProtoMessage for attest_key::Result {
     fn clear_message(&mut self) {
-        if let attest_key::Result {
-            output:
-                Some(attest_key::AttestationOutput {
-                    mechanism:
-                        Some(attest_key::attestation_output::Mechanism::ActivateCredential(
-                            attest_key::attestation_output::ActivateCredential { credential },
-                        )),
-                }),
-        } = self
-        {
-            credential.zeroize();
+        match self {
+            attest_key::Result {
+                output:
+                    Some(attest_key::AttestationOutput {
+                        mechanism:
+                            Some(attest_key::attestation_output::Mechanism::ActivateCredential(
+                                attest_key::attestation_output::ActivateCredential { credential },
+                            )),
+                    }),
+            } => credential.zeroize(),
+            attest_key::Result {
+                output:
+                    Some(attest_key::AttestationOutput {
+                        mechanism:
+                            Some(attest_key::attestation_output::Mechanism::CertifyAndQuote(
+                                attest_key::attestation_output::CertifyAndQuote { key_attestation_certificate, platform_attestation_certificate },
+                            )),
+                    }),
+            } => { key_attestation_certificate.zeroize(); platform_attestation_certificate.zeroize(); },
+            _ => (),
         }
     }
 }
