@@ -76,9 +76,7 @@ impl TryFrom<OperationProto> for Operation {
             Some(AttestationMechanismParams {
                 mechanism:
                     Some(attestation_mechanism_params::Mechanism::CertifyAndQuote(
-                        attestation_mechanism_params::CertifyAndQuote {
-                            nonce,
-                        },
+                        attestation_mechanism_params::CertifyAndQuote { nonce },
                     )),
             }) => Ok(Operation::CertifyAndQuote {
                 attested_key_name: proto_op.attested_key_name,
@@ -111,12 +109,16 @@ impl TryFrom<Result> for ResultProto {
                     )),
                 }),
             }),
-            Result::CertifyAndQuote { key_attestation_certificate, platform_attestation_certificate } => Ok(ResultProto {
+            Result::CertifyAndQuote {
+                key_attestation_certificate,
+                platform_attestation_certificate,
+            } => Ok(ResultProto {
                 output: Some(AttestationOutput {
                     mechanism: Some(attestation_output::Mechanism::CertifyAndQuote(
                         attestation_output::CertifyAndQuote {
                             key_attestation_certificate: key_attestation_certificate.to_vec(),
-                            platform_attestation_certificate: platform_attestation_certificate.to_vec(),
+                            platform_attestation_certificate: platform_attestation_certificate
+                                .to_vec(),
                         },
                     )),
                 }),
@@ -142,11 +144,14 @@ impl TryFrom<ResultProto> for Result {
                 credential: credential.into(),
             }),
             ResultProto {
-                output: 
+                output:
                     Some(AttestationOutput {
                         mechanism:
                             Some(attestation_output::Mechanism::CertifyAndQuote(
-                                attestation_output::CertifyAndQuote { key_attestation_certificate, platform_attestation_certificate},
+                                attestation_output::CertifyAndQuote {
+                                    key_attestation_certificate,
+                                    platform_attestation_certificate,
+                                },
                             )),
                     }),
             } => Ok(Result::CertifyAndQuote {
@@ -199,7 +204,8 @@ mod test {
             attested_key_name,
             attesting_key_name,
             nonce,
-        } = op {
+        } = op
+        {
             assert_eq!(attested_key_name, op_attested_key_name);
             assert_eq!(
                 attesting_key_name.unwrap_or_default(),
@@ -237,7 +243,8 @@ mod test {
             attesting_key_name,
             credential_blob,
             secret,
-        } = op {
+        } = op
+        {
             assert_eq!(attested_key_name, op_attested_key_name);
             assert_eq!(
                 attesting_key_name.unwrap_or_default(),
@@ -260,9 +267,7 @@ mod test {
             attesting_key_name: String::new(),
             parameters: Some(AttestationMechanismParams {
                 mechanism: Some(attestation_mechanism_params::Mechanism::CertifyAndQuote(
-                    attestation_mechanism_params::CertifyAndQuote {
-                        nonce: op_nonce,
-                    },
+                    attestation_mechanism_params::CertifyAndQuote { nonce: op_nonce },
                 )),
             }),
         };
@@ -270,7 +275,8 @@ mod test {
         let op: Operation = proto.try_into().expect("Failed conversion");
         if let Operation::CertifyAndQuote {
             attesting_key_name, ..
-        } = op {
+        } = op
+        {
             assert!(attesting_key_name.is_none());
         } else {
             panic!("`if let` branch not taken")
@@ -282,7 +288,7 @@ mod test {
         let op_attested_key_name = String::from("attested key name");
         let op_credential_blob = vec![0xaa; 32];
         let op_secret = vec![0x11; 16];
-        
+
         let proto = OperationProto {
             attested_key_name: op_attested_key_name,
             attesting_key_name: String::new(),
@@ -299,7 +305,8 @@ mod test {
         let op: Operation = proto.try_into().expect("Failed conversion");
         if let Operation::ActivateCredential {
             attesting_key_name, ..
-        } = op {
+        } = op
+        {
             assert!(attesting_key_name.is_none());
         } else {
             panic!("`if let` branch not taken")
@@ -326,9 +333,7 @@ mod test {
                 Some(AttestationMechanismParams {
                     mechanism:
                         Some(attestation_mechanism_params::Mechanism::CertifyAndQuote(
-                            attestation_mechanism_params::CertifyAndQuote {
-                                nonce,
-                            },
+                            attestation_mechanism_params::CertifyAndQuote { nonce },
                         )),
                 }),
         } = proto
@@ -427,14 +432,14 @@ mod test {
         let _ = CONVERTER
             .body_to_operation(body, Opcode::AttestKey)
             .expect("Failed to convert to operation");
-        }
+    }
 
-        #[test]
-        fn attest_key_op_e2e_activate_credential() {
-            let op_attested_key_name = String::from("attested key name");
-            let op_attesting_key_name = String::from("attesting key name");
-            let op_credential_blob = vec![0xaa; 32];
-            let op_secret = vec![0x11; 16];
+    #[test]
+    fn attest_key_op_e2e_activate_credential() {
+        let op_attested_key_name = String::from("attested key name");
+        let op_attesting_key_name = String::from("attesting key name");
+        let op_credential_blob = vec![0xaa; 32];
+        let op_secret = vec![0x11; 16];
 
         let op = Operation::ActivateCredential {
             attested_key_name: op_attested_key_name,
@@ -462,7 +467,8 @@ mod test {
                 mechanism: Some(attestation_output::Mechanism::CertifyAndQuote(
                     attestation_output::CertifyAndQuote {
                         key_attestation_certificate: resp_key_attestation_certificate.clone(),
-                        platform_attestation_certificate: resp_platform_attestation_certificate.clone(),
+                        platform_attestation_certificate: resp_platform_attestation_certificate
+                            .clone(),
                     },
                 )),
             }),
@@ -470,9 +476,19 @@ mod test {
 
         let resp: Result = proto.try_into().expect("Failed conversion");
 
-        if let Result::CertifyAndQuote { key_attestation_certificate, platform_attestation_certificate } = resp {
-            assert_eq!(key_attestation_certificate.to_vec(), resp_key_attestation_certificate);
-            assert_eq!(platform_attestation_certificate.to_vec(), resp_platform_attestation_certificate);
+        if let Result::CertifyAndQuote {
+            key_attestation_certificate,
+            platform_attestation_certificate,
+        } = resp
+        {
+            assert_eq!(
+                key_attestation_certificate.to_vec(),
+                resp_key_attestation_certificate
+            );
+            assert_eq!(
+                platform_attestation_certificate.to_vec(),
+                resp_platform_attestation_certificate
+            );
         } else {
             panic!("`if let` branch not taken")
         }
@@ -518,13 +534,22 @@ mod test {
                 Some(AttestationOutput {
                     mechanism:
                         Some(attestation_output::Mechanism::CertifyAndQuote(
-                            attestation_output::CertifyAndQuote { key_attestation_certificate, platform_attestation_certificate },
+                            attestation_output::CertifyAndQuote {
+                                key_attestation_certificate,
+                                platform_attestation_certificate,
+                            },
                         )),
                 }),
         } = proto
         {
-            assert_eq!(key_attestation_certificate.to_vec(), resp_key_attestation_certificate);
-            assert_eq!(platform_attestation_certificate.to_vec(), resp_platform_attestation_certificate);
+            assert_eq!(
+                key_attestation_certificate.to_vec(),
+                resp_key_attestation_certificate
+            );
+            assert_eq!(
+                platform_attestation_certificate.to_vec(),
+                resp_platform_attestation_certificate
+            );
         } else {
             panic!("`if let` branch not taken")
         }
