@@ -85,7 +85,7 @@ impl TryFrom<OperationProto> for Operation {
                 } else {
                     Some(proto_op.attesting_key_name)
                 },
-                nonce: nonce.into(),
+                nonce,
             }),
             _ => {
                 error!("The encoding of the operation does not follow the expected pattern");
@@ -322,7 +322,7 @@ mod test {
         let op = Operation::CertifyAndQuote {
             attested_key_name: op_attested_key_name.clone(),
             attesting_key_name: Some(op_attesting_key_name.clone()),
-            nonce: op_nonce.clone().into(),
+            nonce: op_nonce.clone(),
         };
 
         let proto: OperationProto = op.try_into().expect("Failed conversion");
@@ -389,7 +389,7 @@ mod test {
         let op = Operation::CertifyAndQuote {
             attested_key_name: op_attested_key_name,
             attesting_key_name: None,
-            nonce: op_nonce.into(),
+            nonce: op_nonce,
         };
 
         let proto: OperationProto = op.try_into().expect("Failed conversion");
@@ -422,7 +422,7 @@ mod test {
         let op = Operation::CertifyAndQuote {
             attested_key_name: op_attested_key_name,
             attesting_key_name: Some(op_attesting_key_name),
-            nonce: op_nonce.into(),
+            nonce: op_nonce,
         };
 
         let body = CONVERTER
